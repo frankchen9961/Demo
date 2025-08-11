@@ -1,0 +1,23 @@
+
+// 第三方串接API請求紀錄
+Table request_log {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  request_direction tinyint [not null, note: "請求方向: 1-別人呼叫RBKCP, 2-RBKCP呼叫別人"]
+  request_id nvarchar(100) [null, note: "請求ID，可用於關聯請求與回應"]
+  api_endpoint nvarchar(500) [not null, note: "API端點URL"]
+  http_method nvarchar(10) [not null, note: "HTTP方法: GET, POST, PUT, DELETE等"]
+  client_ip nvarchar(45) [null, note: "客戶端IP地址"]
+  user_agent nvarchar(1000) [null, note: "客戶端User-Agent"]
+  request_headers nvarchar(max) [null, note: "請求標頭JSON格式"]
+  request_body nvarchar(max) [null, note: "請求內容JSON格式"]
+  response_status_code int [null, note: "回應狀態碼"]
+  response_headers nvarchar(max) [null, note: "回應標頭JSON格式"]
+  response_body nvarchar(max) [null, note: "回應內容JSON格式"]
+  response_time_ms int [null, note: "回應時間(毫秒)"]
+  error_message nvarchar(1000) [null, note: "錯誤訊息"]
+  user_id nvarchar(50) [null, note: "關聯用戶ID(如果有)"]
+  correlation_id nvarchar(100) [null, note: "關聯ID，可用於追蹤跨系統請求"]
+  request_time datetime2 [not null, note: "請求開始時間"]
+  response_time datetime2 [null, note: "回應完成時間"]
+  create_time datetime2 [not null, default: `GETDATE()`, note: "建立時間"]
+}

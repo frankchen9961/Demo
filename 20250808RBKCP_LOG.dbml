@@ -1,0 +1,58 @@
+
+// 第三方串接API請求紀錄
+Table request_log {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  request_direction tinyint [not null, note: "請求方向: 1-別人呼叫RBKCP, 2-RBKCP呼叫別人"]
+  request_id nvarchar(100) [null, note: "請求ID，可用於關聯請求與回應"]
+  api_endpoint nvarchar(500) [not null, note: "API端點URL"]
+  http_method nvarchar(10) [not null, note: "HTTP方法: GET, POST, PUT, DELETE等"]
+  client_ip nvarchar(45) [null, note: "客戶端IP地址"]
+  user_agent nvarchar(1000) [null, note: "客戶端User-Agent"]
+  request_headers nvarchar(max) [null, note: "請求標頭JSON格式"]
+  request_body nvarchar(max) [null, note: "請求內容JSON格式"]
+  response_status_code int [null, note: "回應狀態碼"]
+  response_headers nvarchar(max) [null, note: "回應標頭JSON格式"]
+  response_body nvarchar(max) [null, note: "回應內容JSON格式"]
+  response_time_ms int [null, note: "回應時間(毫秒)"]
+  error_message nvarchar(1000) [null, note: "錯誤訊息"]
+  user_id nvarchar(50) [null, note: "關聯用戶ID(如果有)"]
+  correlation_id nvarchar(100) [null, note: "關聯ID，可用於追蹤跨系統請求"]
+  request_time datetime2 [not null, note: "請求開始時間"]
+  response_time datetime2 [null, note: "回應完成時間"]
+  create_time datetime2 [not null, default: `GETDATE()`, note: "建立時間"]
+}
+
+// 2025-07-30 新增
+// 對話紀錄
+Table ChatHistory {
+  id bigint [pk, increment,note: "唯一識別碼"]
+  conversation_id varchar(255) [ not null, note: "對話唯一識別碼"]
+  subject nvarchar(500) [ not null, note: "主題"]
+  emp_no varchar(10) [ not null, note: "員工編號"]
+  channel varchar(100) [not null,  note: "通道"]
+  ip varchar(100) [ not null, note: "IP位址"]
+  create_time datetime  [not null,  note: "建立時間"]
+}
+
+// 2025-07-30 新增
+// 對話紀錄訊息
+Table ChatHistoryMessage {
+  id bigint [pk, increment ,note: "唯一識別碼"]
+  chat_history_id bigint [ not null, ref: > ChatHistory.id ,note: "關聯ChatHistory唯一識別碼"]
+  conversation_id varchar(50)  [ not null, note: "對話唯一識別碼"]
+  transaction_id varchar(50)  [ not null, note: "交易識別碼"]
+  question nvarchar(max)  [ note: "使用者問題"]
+  scenario_id varchar(36)  [ not null, note: "場景ID"]
+  knowledge_base_collections varchar(1000)  [ note: "知識庫Collection names"]
+  llm_agent_id int [ not null, note: "LLM Agent ID"]
+  tags nvarchar(1000) [ note: "標籤"]
+  stream_response boolean [not null, note: "Stream response"]
+  success boolean [not null, note: "是否傳送成功"]
+  error_code varchar(255) [ note: "錯誤代碼"]
+  send_date_time datetime [not null, note: "傳送時間"]
+  answer_date_time datetime [ note: "回答時間"]
+  llm_model varchar(255) [ note: "LLM Model"]
+  rag_api_resp_code varchar(4) [ note: "RAG API 回應狀態碼"]
+  rag_api_resp_message text [ note: "RAG API 回應訊息"]
+  content nvarchar(max) [ note: "LLM 答案"]
+}
