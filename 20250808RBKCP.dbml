@@ -330,7 +330,7 @@ Table verify_flow {
   modifier varchar(20) [not null, note: "最後修改人員"]
   
   Indexes {
-    (target_type, target_version_id, level, role_id) [unique, name: "idx_targetver_level_role"]
+    (target_type, target_version_id, level, dept_role_id) [unique, name: "idx_targetver_level_role"]
     (target_type, target_version_id, level) [name: "idx_targetver_level"]
   }
 }
