@@ -151,7 +151,7 @@ db.createCollection("documents", {
               description: "授權部門列表",
               items: {
                 bsonType: "object",
-                required: ["department_id", "is_doc_owner"],
+                required: ["department_id"],
                 properties: {
                   department_id: {
                     bsonType: "long",
