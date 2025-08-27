@@ -76,6 +76,11 @@ db.createCollection("documents", {
               bsonType: ["string", "null"],
               description: "來源ID",
             },
+            sycn_target: {
+              bsonType: ["string", "null"],
+              enum: [null, SP, KM],
+              description: "同步目標",
+            },
             source_extra_data: {
               bsonType: ["string", "null"],
               description: "來源額外資料",
