@@ -321,6 +321,7 @@ Table verify_flow {
   target_version_id varchar(50) [not null, note: "對象版本ID (document_version.id 或 knowledge_base_version.id)"]
   level tinyint [not null, note: "審核關卡，1=第一關，2=第二關..."]
   dept_role_id bigint [ref: > PERMIFY_SERVICE_department_role.id, not null, note: "審核角色ID"]
+  role_id bigint [ref: > PERMIFY_SERVICE_role_details.id, not null, note: "審核角色ID"]
   action tinyint [not null, note: "審核動作: -1-待審核, 0-退回, 1-通過"]
   action_time datetime2 [null, note: "動作時間"]
   status tinyint [not null, default: 0, note: "狀態: 0-未完成, 1-已完成"]
