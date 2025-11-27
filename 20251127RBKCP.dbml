@@ -1,0 +1,660 @@
+// #### Base Database Schema ####
+// 部門（基礎權限） 參考關聯用
+Table PERMIFY_SERVICE_department_details {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  code varchar(50) [unique, not null, note: "部門代碼"]
+  name nvarchar(100) [not null, note: "部門名稱"]
+  parent_id bigint [ref: > PERMIFY_SERVICE_department_details.id, null, note: "父部門ID"]
+}
+
+// 角色 （基礎權限）參考關聯用
+Table PERMIFY_SERVICE_role_details {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  department_id bigint [ref: > PERMIFY_SERVICE_department_details.id, not null, note: "部門ID"] 
+  code varchar(50) [not null, note: "角色代碼"]
+  name nvarchar(50) [not null, note: "角色名稱"]
+  description nvarchar(300) [not null, note: "角色描述"]
+}
+
+// 用戶角色關聯（基礎權限）參考關聯用
+Table PERMIFY_SERVICE_role_user {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  role_id bigint [ref: > PERMIFY_SERVICE_role_details.id, not null, note: "角色ID"]
+  user_id varchar(50) [not null, note: "用戶ID/帳號"]
+  user_name nvarchar(100) [not null, note: "用戶姓名"]
+  email varchar(100) [null, note: "用戶信箱"]
+  
+  created_date datetime2 [not null, default: `GETDATE()`, note: "建立時間"]
+  created_by varchar(50) [not null, note: "建立人員"]
+  updated_date datetime2 [not null, default: `GETDATE()`, note: "最後修改時間"]
+  updated_by varchar(50) [not null, note: "最後修改人員"]
+  
+  // 複合唯一索引：一個用戶在一個角色中只能有一筆記錄
+  indexes {
+    (role_id, user_id) [unique, name: "UK_role_user"]
+  }
+}
+
+// 部門角色關聯表 (基礎權限) 參考關聯用
+Table PERMIFY_SERVICE_department_role {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  department_id bigint [ref: > PERMIFY_SERVICE_department_details.id, not null, note: "部門ID"]
+  role_id bigint [ref: > PERMIFY_SERVICE_role_details.id, not null, note: "角色ID"]
+  enable bit [not null, default: 1, note: "啟用狀態: 0-停用, 1-啟用"]
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(50) [not null, note: "建立人員"]
+  modify_time datetime2 [null, note: "最後修改時間"]
+  modifier varchar(50) [null, note: "最後修改人員"]
+  
+  // 複合唯一索引：一個部門在一個角色中只能有一筆記錄
+  indexes {
+    (department_id, role_id) [unique, name: "UK_department_role"]
+  }
+}
+
+// #### RBKCP Database Schema ####
+
+// 2025-07-30 新增sequence
+// 主館
+Table domain {
+  id int [pk, increment, note: "ID"]
+  name nvarchar(50) [not null, note: "主館名稱"]
+  description nvarchar(200) [null, note: "主館說明"]
+  enable bit [not null, note: "啟用狀態: 0-停用, 1-啟用", default: 1]
+  sequence int [not null, default: 0, note: "序號"]
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  modify_time datetime2 [not null, note: "最後修改時間"]
+  modifier varchar(20) [not null, note: "最後修改人員"]
+  deleted bit [not null, default: 0, note: "軟刪除標記: 0-未刪除, 1-已刪除"]
+  delete_time datetime2 [null, note: "刪除時間"]
+  deleter varchar(20) [null, note: "刪除人員"]
+}
+
+// 2025-07-30 新增sequence
+// 分館
+Table subdomain {
+  id int [pk, increment, note: "ID"]
+  domain_id int [ref: > domain.id, not null, note: "主館ID"]
+  name nvarchar(50) [not null, note: "分館名稱"]
+  description nvarchar(200) [null, note: "分館說明"]
+  enable bit [not null, note: "啟用狀態: 0-停用, 1-啟用", default: 1]
+  sequence int [not null, default: 0, note: "序號"]
+  
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  modify_time datetime2 [not null, note: "最後修改時間"]
+  modifier varchar(20) [not null, note: "最後修改人員"]
+  deleted bit [not null, default: 0, note: "軟刪除標記: 0-未刪除, 1-已刪除"]
+  delete_time datetime2 [null, note: "刪除時間"]
+  deleter varchar(20) [null, note: "刪除人員"]
+}
+
+// 分館與部門關聯
+Table subdomain_department_map {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  department_id bigint [ref: > PERMIFY_SERVICE_department_details.id, null, note: "管理部門ID"]
+  subdomain_id int [ref: > subdomain.id, not null, note: "分館ID"]
+
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+}
+
+// 2025-07-30 新增sequence
+// 文件分類
+Table category {
+  id bigint [pk, increment, note: "ID"]
+  subdomain_id int [ref: > subdomain.id, not null, note: "分館ID"]
+  parent_id bigint [ref: > category.id, null, note: "父分類ID"]
+  name nvarchar(50) [not null, note: "分類名稱"]
+  description nvarchar(200) [null, note: "分類說明"]
+  enable bit [not null, note: "啟用狀態: 0-停用, 1-啟用", default: 1]
+  enable_verify bit [not null, note: "是否啟用審核機制: 0-否, 1-是", default: 0]
+  sequence int [not null, default: 0, note: "序號"]
+
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  deleted bit [not null, default: 0, note: "軟刪除標記: 0-未刪除, 1-已刪除"]
+  delete_time datetime2 [null, note: "刪除時間"]
+  deleter varchar(20) [null, note: "刪除人員"]
+}
+
+
+// 2025-10-07 新增 ir_enable、ir_index_name、ir_weight、vector_search_weight
+// 2025-09-11 新增rerank_model、chat_history_llm_model、topk
+// 2025-07-30 新增sequence
+// 場景
+Table scenario {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  uuid char(36) [unique, not null, note: "全域唯一識別碼(UUID)"]
+  name nvarchar(50) [not null, note: "場景名稱"]
+  description nvarchar(200) [null, note: "場景描述"]
+  embedding_model nvarchar(100) [not null, note: "嵌入模型"]
+  vector_database nvarchar(100) [not null, note: "向量資料庫"]
+  enable bit [not null, note: "啟用狀態: 0-停用, 1-啟用", default: 1]
+  llm_agent_id varchar(100) [ null, note: "LLM代理ID"]
+  threshold decimal(5,2) [null, note: "切片信心度閾值"]
+  retrieval_empty_call_llm bit [not null, note: "檢索無結果時是否呼叫LLM: 0-停用, 1-啟用", default: 1]
+  retrieval_empty_response nvarchar(1000) [null, note: "檢索無結果回應"]
+
+  rerank_model nvarchar(100) [null, note: "重排序模型"]
+  chat_history_llm_model nvarchar(100) [null, note: "聊天歷史上下文模型"]
+  topk int [not null, default: 5, note: "檢索結果數量"]
+  
+  ir_enable bit [not null, note: "IR啟用狀態: 0-停用, 1-啟用", default: 0]
+  ir_weight decimal(5,2) [not null, default: 0, note: "IR權重"]
+  vector_search_weight decimal(5,2) [not null, default: 1, note: "Vector Search權重"]
+
+  sequence int [not null, default: 0, note: "序號"]
+  
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  modify_time datetime2 [null, note: "最後修改時間"]
+  modifier varchar(20) [null, note: "最後修改人員"]
+  deleted bit [not null, default: 0, note: "軟刪除標記: 0-未刪除, 1-已刪除"]
+  delete_time datetime2 [null, note: "刪除時間"]
+  deleter varchar(20) [null, note: "刪除人員"]
+}
+
+// 場景與部門關聯
+Table scenario_department_map {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  department_id bigint [ref: > PERMIFY_SERVICE_department_details.id, null, note: "管理部門ID"]
+  scenario_id bigint [ref: > scenario.id, not null, note: "場景ID"]
+
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  Indexes {
+    (scenario_id, department_id) [unique, name: "idx_scenario_department"]
+  }
+}
+
+// 目前只有一個BGE_M3
+// 場景所使用切片模型
+Table scenario_chunk_model {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  scenario_id bigint [ref: > scenario.id, not null, note: "場景ID"]
+  model_name nvarchar(100) [not null, note: "模型名稱"]
+  model_type nvarchar(50) [not null, note: "模型類型 (e.g., embedding, completion, chat)"]
+
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+
+  Indexes {
+    (scenario_id, model_name) [unique, name: "idx_scenario_model_name"]
+  }
+}
+
+// 附件
+Table attachment {
+  id bigint [pk, increment, note: "ID"]
+  name nvarchar(100) [not null, note: "附件檔案名稱"]
+  uuid char(36) [unique, not null, note: "全域唯一識別碼(UUID)"]
+  extension nvarchar(10) [not null, note: "檔案類型"]
+  storage_path nvarchar(200) [not null, note: "儲存路徑"]
+  file_size decimal(18,2) [not null, note: "檔案大小"]
+
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  deleted bit [not null, default: 0, note: "軟刪除標記: 0-未刪除, 1-已刪除"]
+  delete_time datetime2 [null, note: "刪除時間"]
+  deleter varchar(20) [null, note: "刪除人員"]
+}
+
+// 2025/11/26 新增type欄位
+// 2025/06/17 current_version_id 移除 reference 約束，避免循環依賴
+// 2025-07-30 新增sequence
+// 知識庫 (系統參數控制知識庫版本需要審核)
+Table knowledge_base {
+  id bigint [pk, increment, note: "ID"]
+  uuid char(36) [unique, not null, note: "全域唯一識別碼(UUID)"]
+  scenario_id bigint [ref: > scenario.id, not null, note: "場景ID"]
+  name nvarchar(50) [not null, note: "知識庫名稱"]
+  description nvarchar(200) [null, note: "知識庫說明"]
+  current_version_id bigint [null, note: "當前版本ID"]
+  enable bit [not null, note: "啟用狀態: 0-停用, 1-啟用"]
+
+  test_collection_name nvarchar(100) [ note: "MongoDB知識庫測試區集合名稱"]
+  prod_collection_name nvarchar(100) [ note: "MongoDB知識庫正式區集合名稱"]
+
+  lock_status tinyint [not null, default: 0, note: "鎖定狀態: 0-未鎖定, 1-手動鎖定, 2-自動鎖定(發布中)"]
+  allow_manual_tag bit [not null, default: 1, note: "是否允許手動標籤: 0-不允許, 1-允許"]
+
+  embedding_model nvarchar(100) [not null, note: "嵌入模型"]
+  vector_database nvarchar(100) [not null, note: "向量資料庫"]
+  sequence int [not null, default: 0, note: "序號"]
+
+  type varchar(20) [not null, default: "general", note: "知識庫類型: General(一般知識庫), QA(QA知識庫)"]
+
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  modify_time datetime2 [not null, note: "最後修改時間"]
+  modifier varchar(20) [not null, note: "最後修改人員"]
+  deleted bit [not null, default: 0, note: "軟刪除標記: 0-未刪除, 1-已刪除"]
+  delete_time datetime2 [null, note: "刪除時間"]
+  deleter varchar(20) [null, note: "刪除人員"]
+}
+
+// 2025/06/27 新增collection_name
+// 知識庫版本
+Table knowledge_base_version {
+  id bigint [pk, increment, note: "ID"]
+  uuid char(36) [unique, not null, note: "全域唯一識別碼(UUID)"] 
+  kb_id bigint [ref: > knowledge_base.id, not null, note: "知識庫ID"]
+  version_number decimal(5,1) [not null, note: "版本號碼"]
+  collection_name nvarchar(100) [not null, note: "MongoDB集合名稱"] 
+  description nvarchar(200) [null, note: "版本描述"]
+  publish_status tinyint [not null, note: "發布狀態: 0-未發布, 1-已發布, 2-歷史版本"]
+  verify_status tinyint [not null, default: 0, note: "審核狀態: -1-審核退回,0-未送審, 1-審核中, 2-審核完成"]
+  verify_user_id varchar(30) [null, note: "送審人員ID"]
+  verify_time datetime2 [null, note: "送審時間"]
+  current_verify_flow_id bigint [null, note: "當前審核流程ID"]
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  modify_time datetime2 [not null, note: "最後修改時間"]
+  modifier varchar(20) [not null, note: "最後修改人員"]
+  deleted bit [not null, default: 0, note: "軟刪除標記: 0-未刪除, 1-已刪除"]
+  delete_time datetime2 [null, note: "刪除時間"]
+  deleter varchar(20) [null, note: "刪除人員"]
+
+  Indexes {
+    (kb_id, version_number) [unique, name: "idx_kb_version_unique"]
+  }
+}
+
+// 知識庫上傳版本紀錄
+Table knowledge_base_upload {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  knowledge_base_id bigint [ref: > knowledge_base.id, not null, note: "知識庫ID"]
+  upload_version_id bigint [null, note: "已上傳版本ID"]
+  upload_start_time datetime2 [not null, note: "上傳開始時間"]
+  upload_end_time datetime2 [note: "上傳結束時間"]
+  received_time datetime2 [note: "更新完成時間"]
+  create_time datetime2 [not null, note: "建立時間"]
+}
+
+// 知識庫與標籤庫關聯
+Table knowledge_base_tag_library_map {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  knowledge_base_id bigint [ref: > knowledge_base.id, not null, note: "知識庫ID"]
+  tag_library_id bigint [ref: > tag_library.id, not null, note: "標籤庫ID"]
+
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  Indexes {
+    (knowledge_base_id, tag_library_id) [name: "idx_kb_tag"]
+  }
+}
+
+// 2025/06/13. 標籤庫可能不會存在，僅標籤
+// 標籤庫
+Table tag_library {
+  id bigint [pk, increment, note: "ID"]
+  name nvarchar(20) [not null, note: "標籤庫名稱"]
+  description nvarchar(100) [null, note: "標籤庫說明"]
+  enable bit [not null, note: "啟用狀態: 0-停用, 1-啟用", default: 1]
+
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"] // Renamed from create_by
+  modify_time datetime2 [not null, note: "最後修改時間"] // Renamed from last_update_time
+  modifier varchar(20) [not null, note: "最後修改人員"] // Renamed from last_update_by
+  deleted bit [not null, default: 0, note: "軟刪除標記: 0-未刪除, 1-已刪除"]
+  delete_time datetime2 [null, note: "刪除時間"]
+  deleter varchar(20) [null, note: "刪除人員"]
+}
+
+// 標籤
+Table tag {
+  id bigint [pk, increment, note: "ID"]
+  tag_key nvarchar(20) [not null, note: "標籤鍵"]
+  tag_value nvarchar(20) [not null, note: "標籤值"]
+  source tinyint [not null, note: "來源: 1-其他, 2-標籤庫, 3-手動輸入"]
+  enable bit [not null, note: "啟用狀態: 0-停用, 1-啟用", default: 1]
+
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  deleted bit [not null, default: 0, note: "軟刪除標記: 0-未刪除, 1-已刪除"]
+  delete_time datetime2 [null, note: "刪除時間"]
+  deleter varchar(20) [null, note: "刪除人員"]
+}
+
+//2025/11/26 新增targetType 3-QA版本
+//role_id 不用 PERMIFY_SERVICE_department_role.id 是因為方便設定，不然每個部門都有自己的設定，會太多太複雜
+// 審核流程設定
+Table verify_flow_template {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  target_type tinyint [not null, note: "審核對象類型: 1-文件版本, 2-知識庫版本,3-QA版本"]
+  level tinyint [not null, default: 1, note: "審核關卡，1=第一關，2=第二關...，對應審核階段"]
+  role_id bigint [ref: > PERMIFY_SERVICE_role_details.id, not null, note: "審核角色ID"]
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+}
+
+//2025/11/26 新增targetType 3-QA版本
+//2025/09/30 dept_role_id棄用，改role_id，等同於verify_flow_template.role_id
+//在送審時，送審人員部門id (department id) 與 審核流程角色(verify_flow_template.role_id) 查出 PERMIFY_SERVICE_department_role.id 寫入 dept_role_id
+//審核流程
+Table verify_flow {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  target_type tinyint [not null, note: "審核對象類型: 1-文件版本, 2-知識庫版本,3-QA版本"]
+  target_version_id varchar(50) [not null, note: "對象版本ID (document_version.id 或 knowledge_base_version.id)"]
+  level tinyint [not null, note: "審核關卡，1=第一關，2=第二關..."]
+  dept_role_id bigint [ref: > PERMIFY_SERVICE_department_role.id, not null, note: "審核角色ID"]
+  role_id bigint [ref: > PERMIFY_SERVICE_role_details.id, not null, note: "審核角色ID"]
+  action smallint [not null, note: "審核動作: -1-待審核, 0-退回, 1-通過"]
+  action_time datetime2 [null, note: "動作時間"]
+  status tinyint [not null, default: 0, note: "狀態: 0-未完成, 1-已完成"]
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  modify_time datetime2 [not null, note: "最後修改時間"] 
+  modifier varchar(20) [not null, note: "最後修改人員"]
+  
+  Indexes {
+    (target_type, target_version_id, level, role_id) [unique, name: "idx_targetver_level_role"]
+    (target_type, target_version_id, level) [name: "idx_targetver_level"]
+  }
+}
+
+//2025/11/26 新增targetType 3-QA版本
+// 審核流程紀錄
+Table verify_flow_log {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  target_type tinyint [not null, note: "審核對象類型: 1-文件版本, 2-知識庫版本, 3-QA版本"]
+  target_version_id varchar(50) [not null, note: "對象版本ID (knowledge_base_version.id)"]
+  verify_by varchar(30) [not null, note: "審核人員"]
+  reason nvarchar(500) [null, note: "審核意見"]
+  action smallint [not null, note: "審核動作: 0-退回, 1-通過"]
+  level tinyint [not null, default: 1, note: "審核關卡，1=第一關，2=第二關...，對應審核階段"]
+  sequence int [not null, note: "審核順序，從1開始遞增"]
+  creator varchar(20) [not null, note: "建立人員"]
+  create_time datetime2 [not null, note: "建立時間"]
+}
+
+
+// 辭典主表
+Table dictionary {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  name nvarchar(50) [not null, note: "辭典名稱"]
+  description nvarchar(500) [null, note: "辭典描述"]
+  enable bit [not null, default: 1, note: "啟用狀態: 0-停用, 1-啟用"]
+  sequence int [not null, default: 0, note: "序號"]
+  
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  modify_time datetime2 [not null, note: "最後修改時間"]
+  modifier varchar(20) [not null, note: "最後修改人員"]
+}
+
+// 詞條主表
+Table dictionary_term {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  dictionary_id bigint [ref: > dictionary.id, not null, note: "辭典ID"]
+  term nvarchar(50) [not null, note: "詞條內容"]
+  term_type varchar(20) [not null, note: "詞條類型: synonym(同義詞)"]
+  master_term_id bigint [ref: > dictionary_term.id, null, note: "主詞ID (主從關係)"]
+  enable bit [not null, default: 1, note: "啟用狀態: 0-停用, 1-啟用"]
+  sequence int [not null, default: 0, note: "序號"]
+  
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  modify_time datetime2 [not null, note: "最後修改時間"]
+  modifier varchar(20) [not null, note: "最後修改人員"]
+  
+  Indexes {
+    (dictionary_id, term,master_term_id) [unique, name: "idx_dict_term_master_id_unique"]
+    (dictionary_id, term_type) [name: "idx_dict_term_type"]
+    (master_term_id) [name: "idx_master_term"]
+  }
+}
+
+// 辭典與場景關聯
+Table dictionary_scenario_map {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  dictionary_id bigint [ref: > dictionary.id, not null, note: "辭典ID"]
+  scenario_id bigint [ref: > scenario.id, not null, note: "場景ID"]
+
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  
+  Indexes {
+    (dictionary_id, scenario_id) [unique, name: "idx_dict_scenario_unique"]
+  }
+}
+
+// 附件管理主表
+Table attachedfiles {
+  id bigint [pk, increment, note: "ID"]
+  name nvarchar(100) [not null, note: "附件文件名稱"]
+  uuid char(36) [not null, unique, note: "全域唯一識別碼(UUID)"]
+  content_type nvarchar(10) [not null, note: "附件內容類型: 0-一般檔案, 1-組合檔案"]
+  enable bit [not null, default: 0, note: "啟用狀態: 0-停用, 1-啟用"]
+  deleted bit [not null, default: 0, note: "軟刪除標記: 0-未刪除, 1-已刪除"]
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  modify_time datetime2 [note: "修改時間"]
+  modifier varchar(20) [note: "修改人員"]
+  delete_time datetime2 [note: "刪除時間"]
+  deleter varchar(20) [note: "刪除人員"]
+  last_access_time datetime2 [note: "最後存取時間"]
+}
+
+// 附件管理附件版本
+Table attachedfiles_version {
+  id bigint [pk, increment, note: "ID"]
+  name nvarchar(100) [not null, note: "附件文件名稱"]
+  uuid char(36) [not null, unique, note: "全域唯一識別碼(UUID)"]
+  attachedfiles_id bigint [not null, note: "附件文件ID"]
+  version_number decimal(5,1) [not null, note: "版本號碼"]
+  content_type nvarchar(10) [not null, note: "附件內容類型: 0-一般檔案, 1-組合檔案"]
+  file_name nvarchar(100) [not null, note: "附件檔名"]
+  extension nvarchar(10) [note: "附件副檔名"]
+  storage_path nvarchar(200) [note: "儲存路徑"]
+  file_size decimal(18,2) [not null, note: "檔案大小"]
+  effect_time datetime2 [not null, note: "生效時間"]
+  export_type nvarchar(10) [note: "檔案匯出類型"]
+  memo nvarchar(200) [note: "備註說明"]
+  checksum nvarchar(32) [note: "附件檔案校驗碼"]
+  enable bit [not null, default: 0, note: "啟用狀態: 0-停用, 1-啟用"]
+  deleted bit [not null, default: 0, note: "軟刪除標記: 0-未刪除, 1-已刪除"]
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  modify_time datetime2 [note: "修改時間"]
+  modifier varchar(20) [note: "修改人員"]
+  delete_time datetime2 [note: "刪除時間"]
+  deleter varchar(20) [note: "刪除人員"]
+  last_access_time datetime2 [note: "讀取時間"]
+}
+
+// 附件管理組合
+Table attachedfiles_group {
+  id bigint [pk, increment, note: "ID"]
+  group_version_id bigint [not null, note: "組合文件版本ID"]
+  attachedfiles_id bigint [not null, note: "文件ID"]
+  seq_no bigint [not null, note: "順序"]
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+}
+
+// 附件管理標籤
+Table attachedfiles_tag {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  attachedfiles_version_id bigint [not null, note: "附件文件版本ID"]
+  tag_id bigint [not null, note: "標籤ID"]
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+}
+
+// 附件管理階層
+Table directory {
+  id bigint [pk, increment, note: "ID"]
+  subdomain_id int [not null, note: "分館ID"]
+  parent_id bigint [note: "父階層ID"]
+  name nvarchar(50) [not null, note: "階層名稱"]
+  enable bit [not null, default: 1, note: "啟用狀態: 0-停用, 1-啟用"]
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  deleted bit [not null, default: 0, note: "軟刪除標記: 0-未刪除, 1-已刪除"]
+  delete_time datetime2 [note: "刪除時間"]
+  deleter varchar(20) [note: "刪除人員"]
+  sequence int [not null, default: 0, note: "序號"]
+}
+
+// 附件管理階層授權關聯
+Table directory_department_map {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  department_id bigint [not null, note: "管理部門ID"]
+  directory_id bigint [not null, note: "階層ID"]
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+}
+
+// Relationships
+Ref: attachedfiles_version.attachedfiles_id > attachedfiles.id
+Ref: attachedfiles_group.attachedfiles_id > attachedfiles.id
+Ref: attachedfiles_tag.attachedfiles_version_id > attachedfiles_version.id
+Ref: directory.parent_id > directory.id
+Ref: directory_department_map.directory_id > directory.id
+
+
+//-------------- 2025/11/26 新增QA功能相關Table
+
+// QA分類
+Table qa_category {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  subdomain_id int [ref: > subdomain.id, not null, note: "分館ID"]
+  parent_id bigint [ref: > qa_category.id, note: "父分類ID"]
+  name nvarchar(50) [not null, note: "分類名稱"]
+  description nvarchar(200) [note: "分類說明"]
+  enable bit [not null, default: 1, note: "啟用狀態: 0-停用, 1-啟用"]
+  sequence int [not null, default: 0, note: "序號"]
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  modify_time datetime2 [note: "修改時間"]
+  modifier varchar(20) [note: "修改人員"]
+  
+  Indexes {
+    (subdomain_id) [name: "idx_qa_category_subdomain"]
+    (parent_id) [name: "idx_qa_category_parent"]
+  }
+}
+
+//QA主表
+Table qa_main {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  qa_category_id bigint [ref: > qa_category.id, not null, note: "QA分類ID"]
+  title nvarchar(100) [not null, note: "問題標題"]
+  current_version_id bigint [null, note: "當前版本ID (參照 qa_main_version.id，因循環依賴不加外鍵約束)"]
+
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  modify_time datetime2 [note: "修改時間"]
+  modifier varchar(20) [note: "修改人員"]   
+  deleted bit [not null, default: 0, note: "軟刪除標記: 0-未刪除, 1-已刪除"]
+  delete_time datetime2 [null, note: "刪除時間"]
+  deleter varchar(20) [null, note: "刪除人員"]
+  
+  Indexes {
+    (qa_category_id) [name: "idx_qa_main_category"]
+    (deleted) [name: "idx_qa_main_deleted"]
+  }
+}
+
+// QA主表版本
+Table qa_main_version {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  qa_main_id bigint [ref: > qa_main.id, not null, note: "QA主表ID"]
+  title nvarchar(100) [not null, note: "QA標題"]
+  version_number decimal(5,1) [not null, note: "版本號碼"]
+  enable bit [not null, default: 1, note: "啟用狀態: 0-停用, 1-啟用"]
+  description nvarchar(500) [note: "QA描述"]
+  start_time datetime2 [not null, note: "上架時間"]
+  end_time datetime2 [not null, note: "下架時間"]
+  sequence int [not null, default: 0, note: "序號"]
+  draft bit [not null, default: 1, note: "草稿狀態: 0-正式版, 1-草稿"]
+  current_verify_flow_id bigint [null, note: "當前審核流程ID"]
+  verify_status tinyint [not null, default: 0, note: "審核狀態: -1-審核退回,0-未送審, 1-審核中, 2-審核完成"]
+  verify_user_id varchar(30) [null, note: "送審人員ID"]
+  verify_time datetime2 [null, note: "送審時間"]  
+
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  modify_time datetime2 [note: "修改時間"]
+  modifier varchar(20) [note: "修改人員"] 
+  deleted bit [not null, default: 0, note: "軟刪除標記: 0-未刪除, 1-已刪除"]
+  delete_time datetime2 [null, note: "刪除時間"]
+  deleter varchar(20) [null, note: "刪除人員"]  
+  
+  Indexes {
+    (qa_main_id) [name: "idx_qa_main_version_main"]
+    (qa_main_id, draft, verify_status) [name: "idx_qa_main_version_status"]
+    (deleted) [name: "idx_qa_main_version_deleted"]
+  }
+}
+
+// QA主表版本與標籤關聯
+Table qa_main_version_tag_map {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  qa_main_version_id bigint [ref: > qa_main_version.id, not null, note: "QA主表版本ID"]
+  tag_id bigint [ref: > tag.id, not null, note: "標籤ID"]
+
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  
+  Indexes {
+    (qa_main_version_id, tag_id) [unique, name: "idx_qa_mainver_tag"]
+  }
+}
+
+// QA問題
+Table qa_question {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  qa_main_version_id bigint [ref: > qa_main_version.id, not null, note: "QA主表版本ID"]
+  question_text nvarchar(1000) [not null, note: "問題內容"]
+  source_type tinyint [not null, note: "來源類型: 1-手動(manual), 2-自動(auto)"]
+  sequence int [not null, default: 0, note: "序號"]
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+
+  modify_time datetime2 [note: "修改時間"]
+  modifier varchar(20) [note: "修改人員"]  
+  
+  Indexes {
+    (qa_main_version_id) [name: "idx_qa_question_version"]
+  }
+}
+
+// QA答案
+Table qa_answer {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  qa_main_version_id bigint [ref: > qa_main_version.id, not null, note: "QA主表版本ID"]
+  channel nvarchar(10) [not null, note:"渠道類型"]
+  answer_text nvarchar(max) [not null, note: "答案內容"]
+  sequence int [not null, default: 0, note: "序號"]
+
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+
+  modify_time datetime2 [note: "修改時間"]
+  modifier varchar(20) [note: "修改人員"]
+  
+ Indexes {
+    (qa_main_version_id) [name: "idx_qa_answer_version"]
+    (qa_main_version_id, channel) [name: "idx_qa_answer_version_channel"]
+  }
+}
+
+// QA主表版本與知識庫版本關聯
+Table qa_version_knowledge_base_version_map {
+  id bigint [pk, increment, note: "唯一識別碼"]
+  qa_main_version_id bigint [ref: > qa_main_version.id, not null, note: "QA主表版本ID"]
+  knowledge_base_version_id bigint [ref: > knowledge_base_version.id, not null, note: "知識庫版本ID"]
+  enabled bit [not null, default: 1, note: "啟用狀態: 0-停用, 1-啟用"]
+  
+  create_time datetime2 [not null, note: "建立時間"]
+  creator varchar(20) [not null, note: "建立人員"]
+  modify_time datetime2 [note: "修改時間"]
+  modifier varchar(20) [note: "修改人員"]
+  Indexes {
+    (qa_main_version_id, knowledge_base_version_id) [unique, name: "idx_qa_ver_kb"]
+  }
+}
