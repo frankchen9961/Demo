@@ -1,0 +1,1 @@
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'(REVIEWED)序號@@N', @level0type=N'Schema', @level0name=N'dbo', @level1type=N'Table', @level1name=N'category', @level2type=N'Column', @level2name=N'sequence';
