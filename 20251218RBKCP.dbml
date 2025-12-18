@@ -144,7 +144,7 @@ Table scenario {
   ir_enable bit [not null, note: "IR啟用狀態: 0-停用, 1-啟用", default: 0]
   ir_weight decimal(5,2) [not null, default: 0, note: "IR權重"]
   vector_search_weight decimal(5,2) [not null, default: 1, note: "Vector Search權重"]
-  classification varchar(50) [ not null, default: internal , note: "資訊分級"]
+  classification varchar(50) [ not null, default: "internal", note: "資訊分級"]
   sequence int [not null, default: 0, note: "序號"]
   
   create_time datetime2 [not null, note: "建立時間"]
